@@ -1,0 +1,217 @@
+# =============================================
+# vnz.dev - Full Supabase Local Stack
+# Complete production parity (Auth, DB, Realtime, Storage)
+# =============================================
+#
+# Requirements:
+#   - Docker Desktop running
+#   - At least 4GB RAM allocated to Docker
+#
+# Usage:
+#   docker compose -f docker-compose.supabase.yml up
+#   docker compose -f docker-compose.supabase.yml down
+#   docker compose -f docker-compose.supabase.yml down -v  # Fresh start
+#
+# Services:
+#   - Supabase Studio:  http://localhost:54323
+#   - App:              http://localhost:3000
+#   - PostgreSQL:       localhost:54322
+#   - Inbucket (email): http://localhost:54324
+#
+
+services:
+  # =============================================
+  # Supabase Kong (API Gateway)
+  # =============================================
+  kong:
+    image: supabase/kong:2.1.1
+    restart: unless-stopped
+    ports:
+      - "54321:8000"
+      - "54323:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_RESOLVER: 127.0.0.11
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Forwarded-For https://$http_host"
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Real-IP $remote_addr"
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Forwarded-Proto $scheme"
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "Host $http_host"
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Request-ID $request_id"
+      KONG_NGINX_PROXY_PROXY_SET_HEADER: "Connection ''"
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: "128k"
+      KONG_NGINX_PROXY_PROXY_BUFFERS: "64 128k"
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwvgCvKz0i01QBOe36BCE
+    volumes:
+      - ./docker/supabase/kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      realtime:
+        condition: service_started
+
+  # =============================================
+  # Supabase Auth (GoTrue)
+  # =============================================
+  auth:
+    image: supabase/gotrue:v2.158.1
+    restart: unless-stopped
+    ports:
+      - "9999:9999"
+    environment:
+      API_EXTERNAL_URL: http://localhost:54321
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@db:5432/postgres?search_path=auth
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMS_AUTOCONFIRM: "true"
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SSO_ENABLED: "false"
+      GOTRUE_EXTERNAL_URL: http://localhost:54321
+      PROVIDER_ENABLED: email
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================
+  # PostgREST (REST API for PostgreSQL)
+  # =============================================
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    ports:
+      - "30000:3000"
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================
+  # Realtime
+  # =============================================
+  realtime:
+    image: supabase/realtime:v2.33.5
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: postgres
+      PORT: 4000
+      REALTIME_DB_HOST: db
+      REALTIME_DB_PORT: 5432
+      REALTIME_DB_USER: supabase_admin
+      REALTIME_DB_PASSWORD: postgres
+      REALTIME_DB_NAME: postgres
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime-local
+      SECRET_KEY_BASE: something-very-long-and-really-really-really-secret
+      ERL_AFLAGS: "-proto_dist inet_tcp"
+      API_KEY: your-realtime-api-key
+      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================
+  # PostgreSQL (Supabase-extended)
+  # =============================================
+  db:
+    image: supabase/postgres:15.6.1
+    restart: unless-stopped
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST: /var/run/postgresql
+      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      SITE_URL: http://localhost:3000
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwvgCvKz0i01QBOe36BCE
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+      - ./supabase/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # =============================================
+  # Inbucket (Local email testing)
+  # =============================================
+  inbucket:
+    image: inbucket/inbucket:3.0.1
+    restart: unless-stopped
+    ports:
+      - "54324:9000"
+    environment:
+      INBUCKET_WEB_ADDR: 0.0.0.0:9000
+      INBUCKET_SMTP_ADDR: 0.0.0.0:2500
+      INBUCKET_SMTPDOMAIN: vnzdev.local
+      INBUCKET_SMTPSTARTTLS: "false"
+
+  # =============================================
+  # Next.js App (connects to local Supabase)
+  # =============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_started
+
+volumes:
+  supabase_db_data:

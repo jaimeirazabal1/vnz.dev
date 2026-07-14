@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+
+# Next.js
+.next
+out
+build
+
+# Docker
+Dockerfile
+Dockerfile.prod
+docker-compose*.yml
+.dockerignore
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+CONTRIBUTING.md
+SECURITY.md
+LICENSE
+*.md
+
+# Supabase (not needed in container)
+supabase
+
+# Tests
+coverage

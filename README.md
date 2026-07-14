@@ -33,6 +33,7 @@ vnz.dev is an open-source developer marketplace platform where software develope
 | Payments | [Stripe Connect](https://stripe.com/) |
 | Language | TypeScript (strict mode) |
 | Hosting | [Vercel](https://vercel.com/) |
+| Containers | [Docker](https://www.docker.com/) |
 
 ## Features (MVP)
 
@@ -48,14 +49,73 @@ vnz.dev is an open-source developer marketplace platform where software develope
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Docker (Recommended for Contributors)
+
+The fastest way to get a full development environment running. Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+#### Quick Start (3 commands)
+
+```bash
+git clone https://github.com/jaimeirazabal1/vnz.dev.git
+cd vnz.dev
+make dev-docker        # or: docker compose up
+```
+
+This starts:
+- **PostgreSQL 16** with the full schema + seed data (53 skills)
+- **Next.js app** with hot-reload at http://localhost:3000
+
+The database is initialized automatically on first run with all tables, indexes, RLS policies, triggers, and default skills.
+
+#### Full Supabase Local Stack (Production Parity)
+
+For complete local development with Auth, Realtime, and Storage:
+
+```bash
+make dev-supabase      # or: docker compose -f docker-compose.supabase.yml up
+```
+
+This starts the full Supabase stack:
+- **Supabase Studio** at http://localhost:54323
+- **Auth (GoTrue)** at http://localhost:9999
+- **PostgREST** (REST API) at http://localhost:30000
+- **Realtime** at http://localhost:4000
+- **Inbucket** (email testing) at http://localhost:54324
+- **Next.js app** at http://localhost:3000
+
+#### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `make dev-docker` | Start PostgreSQL + App |
+| `make dev-supabase` | Start full Supabase + App |
+| `make stop` | Stop all containers |
+| `make db-reset` | Reset database (fresh start) |
+| `make db-shell` | Open psql shell |
+| `make logs` | Follow app logs |
+| `make build` | Build production image |
+| `make clean` | Remove all containers and volumes |
+
+Or use npm scripts:
+
+| Command | Description |
+|---------|-------------|
+| `pnpm docker:dev` | Start Docker dev stack |
+| `pnpm docker:supabase` | Start Supabase local stack |
+| `pnpm docker:stop` | Stop containers |
+| `pnpm db:reset` | Reset database |
+| `pnpm db:shell` | Open psql shell |
+
+### Option 2: Local Development (No Docker)
+
+#### Prerequisites
 
 - **Node.js** >= 18.0.0
 - **pnpm** >= 8.0.0
 - **Git**
 - A [Supabase](https://supabase.com/) account (free tier works)
 
-### Installation
+#### Installation
 
 1. **Fork and clone the repository**
 
@@ -100,6 +160,28 @@ pnpm vercel
 
 Or connect your GitHub repository to Vercel for automatic deployments.
 
+## Database Schema
+
+The database includes 15 tables with full RLS policies:
+
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (auto-created on signup) |
+| `developer_profiles` | Developer-specific profile data |
+| `client_profiles` | Client/company profile data |
+| `skills` | 53 pre-seeded technical skills |
+| `developer_skills` | Developer-skill relationships |
+| `projects` | Project postings |
+| `project_categories` | SDLC phase tags per project |
+| `project_skills` | Required skills per project |
+| `proposals` | Developer applications to projects |
+| `milestones` | Payment milestones per project |
+| `payments` | Stripe payment records |
+| `conversations` | Chat rooms |
+| `conversation_members` | Chat room participants |
+| `messages` | Chat messages |
+| `reviews` | Post-project ratings |
+
 ## Project Structure
 
 ```
@@ -115,9 +197,16 @@ vnz.dev/
 │   ├── lib/              # Utilities, Supabase clients
 │   │   └── supabase/     # Supabase client setup
 │   └── types/            # TypeScript type definitions
+├── docker/
+│   ├── postgres/         # PostgreSQL init scripts
+│   └── supabase/         # Supabase local config (Kong)
 ├── supabase/             # Database migrations
-├── proxy.ts              # Auth proxy (replaces middleware)
-└── public/               # Static assets
+├── docker-compose.yml            # Docker dev (PostgreSQL + App)
+├── docker-compose.supabase.yml   # Full Supabase local stack
+├── Dockerfile                    # Development image
+├── Dockerfile.prod               # Production image (multi-stage)
+├── Makefile                      # Development commands
+└── proxy.ts                      # Auth proxy (Next.js 16)
 ```
 
 ## Contributing

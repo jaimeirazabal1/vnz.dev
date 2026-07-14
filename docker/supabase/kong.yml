@@ -1,0 +1,75 @@
+_format: version
+
+consumers:
+  - name: anon
+    vault_id: anon
+    upstream_url: http://auth:9999
+    request:
+      path: /auth/v1/.well-known/openid-configuration
+      method: GET
+    response:
+      path: /auth/v1/.well-known/openid-configuration
+      method: GET
+
+  - name: authenticated
+    vault_id: authenticated
+    upstream_url: http://auth:9999
+    request:
+      path: /auth/v1/user
+      method: GET
+    response:
+      path: /auth/v1/user
+      method: GET
+
+services:
+  - name: auth
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-openapi
+        paths:
+          - /auth/v1
+      - name: auth-v1
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        paths:
+          - /auth/v1
+
+  - name: rest
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1
+        paths:
+          - /rest/v1
+
+  - name: realtime
+    url: http://realtime:4000/
+    routes:
+      - name: realtime-v1
+        paths:
+          - /realtime/v1
+
+upstreams:
+  - name: auth
+    targets:
+      - target: http://auth:9999
+  - name: rest
+    targets:
+      - target: http://rest:3000
+  - name: realtime
+    targets:
+      - target: http://realtime:4000
+
+certificates: []
+
+vaults:
+  - name: anon
+    config:
+      secret: super-secret-jwt-token-with-at-least-32-characters-long
+      is_vault: false
+  - name: authenticated
+    config:
+      secret: super-secret-jwt-token-with-at-least-32-characters-long
+      is_vault: false
