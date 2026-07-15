@@ -472,3 +472,62 @@ create or replace trigger update_users_updated_at
 create or replace trigger update_projects_updated_at
   before update on public.projects
   for each row execute procedure public.update_updated_at();
+
+-- =============================================
+-- SEED DATA: Default skills
+-- =============================================
+
+insert into public.skills (name, slug, category) values
+  ('React', 'react', 'frontend'),
+  ('Next.js', 'nextjs', 'frontend'),
+  ('Vue.js', 'vuejs', 'frontend'),
+  ('Angular', 'angular', 'frontend'),
+  ('TypeScript', 'typescript', 'frontend'),
+  ('Tailwind CSS', 'tailwindcss', 'frontend'),
+  ('HTML/CSS', 'html-css', 'frontend'),
+  ('Node.js', 'nodejs', 'backend'),
+  ('Python', 'python', 'backend'),
+  ('Go', 'go', 'backend'),
+  ('Rust', 'rust', 'backend'),
+  ('Java', 'java', 'backend'),
+  ('C#', 'csharp', 'backend'),
+  ('PHP', 'php', 'backend'),
+  ('Ruby', 'ruby', 'backend'),
+  ('PostgreSQL', 'postgresql', 'backend'),
+  ('MongoDB', 'mongodb', 'backend'),
+  ('GraphQL', 'graphql', 'backend'),
+  ('REST APIs', 'rest-apis', 'backend'),
+  ('Docker', 'docker', 'devops'),
+  ('Kubernetes', 'kubernetes', 'devops'),
+  ('AWS', 'aws', 'devops'),
+  ('GCP', 'gcp', 'devops'),
+  ('Azure', 'azure', 'devops'),
+  ('CI/CD', 'cicd', 'devops'),
+  ('Terraform', 'terraform', 'devops'),
+  ('Linux', 'linux', 'devops'),
+  ('Jest', 'jest', 'qa'),
+  ('Cypress', 'cypress', 'qa'),
+  ('Playwright', 'playwright', 'qa'),
+  ('Selenium', 'selenium', 'qa'),
+  ('Figma', 'figma', 'uiux'),
+  ('Adobe XD', 'adobe-xd', 'uiux'),
+  ('Sketch', 'sketch', 'uiux'),
+  ('System Design', 'system-design', 'architecture'),
+  ('Microservices', 'microservices', 'architecture'),
+  ('Event-Driven', 'event-driven', 'architecture'),
+  ('Scrum', 'scrum', 'pm'),
+  ('Jira', 'jira', 'pm'),
+  ('React Native', 'react-native', 'mobile'),
+  ('Flutter', 'flutter', 'mobile'),
+  ('iOS (Swift)', 'ios-swift', 'mobile'),
+  ('Android (Kotlin)', 'android-kotlin', 'mobile'),
+  ('Machine Learning', 'machine-learning', 'aiml'),
+  ('Deep Learning', 'deep-learning', 'aiml'),
+  ('NLP', 'nlp', 'aiml'),
+  ('Computer Vision', 'computer-vision', 'aiml'),
+  ('Data Engineering', 'data-engineering', 'data'),
+  ('SQL', 'sql', 'data'),
+  ('Pandas', 'pandas', 'data'),
+  ('Security Auditing', 'security-auditing', 'security'),
+  ('Penetration Testing', 'penetration-testing', 'security')
+on conflict (name) do nothing;

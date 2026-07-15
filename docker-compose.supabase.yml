@@ -3,48 +3,51 @@
 # Complete production parity (Auth, DB, Realtime, Storage)
 # =============================================
 #
+# ⚠️ This file is based on supabase/supabase v2026.07
+#    See: https://github.com/supabase/supabase/tree/master/docker
+#    If images fail to pull, check versions.md for latest.
+#
 # Requirements:
 #   - Docker Desktop running
 #   - At least 4GB RAM allocated to Docker
 #
 # Usage:
-#   docker compose -f docker-compose.supabase.yml up
+#   docker compose -f docker-compose.supabase.yml up -d
 #   docker compose -f docker-compose.supabase.yml down
 #   docker compose -f docker-compose.supabase.yml down -v  # Fresh start
 #
 # Services:
-#   - Supabase Studio:  http://localhost:54323
 #   - App:              http://localhost:3000
 #   - PostgreSQL:       localhost:54322
+#   - Auth:             http://localhost:9999
+#   - REST (PostgREST): http://localhost:30000
+#   - Realtime:         http://localhost:4000
 #   - Inbucket (email): http://localhost:54324
 #
 
 services:
   # =============================================
-  # Supabase Kong (API Gateway)
+  # Kong (API Gateway)
   # =============================================
   kong:
-    image: supabase/kong:2.1.1
+    image: kong/kong:3.9.1
     restart: unless-stopped
     ports:
       - "54321:8000"
       - "54323:8443"
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
-      KONG_DNS_RESOLVER: 127.0.0.11
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Forwarded-For https://$http_host"
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Real-IP $remote_addr"
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Forwarded-Proto $scheme"
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "Host $http_host"
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "X-Request-ID $request_id"
-      KONG_NGINX_PROXY_PROXY_SET_HEADER: "Connection ''"
-      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: "128k"
-      KONG_NGINX_PROXY_PROXY_BUFFERS: "64 128k"
+      KONG_DECLARATIVE_CONFIG: /home/kong/temp.yml
+      KONG_DNS_ORDER: "LAST,A,CNAME"
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_PLUGINS: "request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function"
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: "160k"
+      KONG_NGINX_PROXY_PROXY_BUFFERS: "64 160k"
+      KONG_ROUTER_FLAVOR: expressions
       SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
       SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwvgCvKz0i01QBOe36BCE
     volumes:
-      - ./docker/supabase/kong.yml:/var/lib/kong/kong.yml:ro
+      - ./docker/supabase/kong.yml:/home/kong/temp.yml:ro
     depends_on:
       auth:
         condition: service_healthy
@@ -57,7 +60,7 @@ services:
   # Supabase Auth (GoTrue)
   # =============================================
   auth:
-    image: supabase/gotrue:v2.158.1
+    image: supabase/gotrue:v2.180.0
     restart: unless-stopped
     ports:
       - "9999:9999"
@@ -76,10 +79,8 @@ services:
       GOTRUE_JWT_EXP: 3600
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
-      GOTRUE_JWT_EXP: 3600
       GOTRUE_JWT_SSO_ENABLED: "false"
       GOTRUE_EXTERNAL_URL: http://localhost:54321
-      PROVIDER_ENABLED: email
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
       interval: 5s
@@ -93,7 +94,7 @@ services:
   # PostgREST (REST API for PostgreSQL)
   # =============================================
   rest:
-    image: postgrest/postgrest:v12.2.3
+    image: postgrest/postgrest:v13.0.7
     restart: unless-stopped
     ports:
       - "30000:3000"
@@ -111,7 +112,7 @@ services:
   # Realtime
   # =============================================
   realtime:
-    image: supabase/realtime:v2.33.5
+    image: supabase/realtime:v2.51.11
     restart: unless-stopped
     ports:
       - "4000:4000"
@@ -141,7 +142,7 @@ services:
   # PostgreSQL (Supabase-extended)
   # =============================================
   db:
-    image: supabase/postgres:15.6.1
+    image: supabase/postgres:15.8.1.085
     restart: unless-stopped
     ports:
       - "54322:5432"
@@ -174,7 +175,7 @@ services:
   # Inbucket (Local email testing)
   # =============================================
   inbucket:
-    image: inbucket/inbucket:3.0.1
+    image: inbucket/inbucket:3.1.0
     restart: unless-stopped
     ports:
       - "54324:9000"
