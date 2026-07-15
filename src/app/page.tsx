@@ -50,6 +50,12 @@ export default function Home() {
             vnz<span className="text-muted-foreground">.dev</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <Link href="/developers" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Developers
+            </Link>
+            <Link href="/projects" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Projects
+            </Link>
             <Link href="/login">
               <Button variant="ghost" size="sm">
                 Log in
