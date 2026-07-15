@@ -56,68 +56,79 @@ pnpm db:reset          # Fresh DB (deletes volume + recreates)
 src/
 ├── app/
 │   ├── (auth)/
-│   │   ├── login/          # Empty — needs page.tsx
-│   │   └── register/       # Empty — needs page.tsx
+│   │   ├── login/
+│   │   │   ├── page.tsx          # Dynamic wrapper (ssr: false)
+│   │   │   └── login-form.tsx    # Login form (Supabase email/password)
+│   │   └── register/
+│   │       ├── page.tsx          # Dynamic wrapper (ssr: false)
+│   │       └── register-form.tsx # Register form (role selection)
 │   ├── (dashboard)/
-│   │   ├── dashboard/      # Empty — needs page.tsx
-│   │   ├── developers/     # Empty — needs page.tsx
-│   │   ├── messages/       # Empty — needs page.tsx
-│   │   └── projects/       # Empty — needs page.tsx
-│   ├── api/                # API routes
-│   ├── globals.css         # Tailwind v4 + shadcn theme
-│   ├── layout.tsx          # Root layout (Geist fonts, Toaster)
-│   └── page.tsx            # Landing page (implemented)
+│   │   ├── layout.tsx            # Sidebar layout (nav: Developers, Projects, Dashboard, Messages)
+│   │   ├── dashboard/page.tsx    # Stats + recent activity
+│   │   ├── developers/page.tsx   # Developer search with filters
+│   │   ├── messages/page.tsx     # Conversation list + chat placeholder
+│   │   └── projects/page.tsx     # Project listing with search
+│   ├── api/auth/callback/route.ts # OAuth callback handler
+│   ├── globals.css               # Tailwind v4 + shadcn theme
+│   ├── layout.tsx                # Root layout (Geist fonts, Toaster)
+│   └── page.tsx                  # Landing page
 ├── components/
-│   ├── shared/             # Empty — needs components
-│   └── ui/                 # 14 shadcn components installed
-├── hooks/                  # Empty
+│   ├── shared/
+│   │   ├── developer-card.tsx    # Developer profile card
+│   │   └── project-card.tsx      # Project listing card
+│   └── ui/                       # 14 shadcn components
+├── hooks/                        # Empty
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts       # Browser client
-│   │   ├── server.ts       # Server client (cookies())
-│   │   └── proxy-client.ts # Proxy/edge client
-│   └── utils.ts
+│   └── supabase/
+│       ├── client.ts             # Browser client (createBrowserClient)
+│       ├── server.ts             # Server client (createServerClient + cookies)
+│       └── proxy-client.ts       # Proxy/edge client (NextRequest/NextResponse)
 └── types/
-    └── database.ts         # All TypeScript types & enums
+    └── database.ts               # All TypeScript types & enums
 ```
 
 ## Database Schema (15 tables)
 
-Already created in Docker PostgreSQL with 52 seed skills.
+Created in Docker PostgreSQL with 52 seed skills.
 
-**Core tables**: `users`, `developer_profiles`, `client_profiles`, `skills`, `developer_skills`, `projects`, `project_categories`, `project_skills`, `proposals`, `milestones`, `payments`, `conversations`, `conversation_members`, `messages`, `reviews`
+**Tables**: `users`, `developer_profiles`, `client_profiles`, `skills`, `developer_skills`, `projects`, `project_categories`, `project_skills`, `proposals`, `milestones`, `payments`, `conversations`, `conversation_members`, `messages`, `reviews`
 
 **Auth flow**: Supabase handles auth. On signup, trigger `handle_new_user()` creates `public.users` row from `auth.users`.
 
-**Important**: Standalone PostgreSQL (`docker-compose.yml`) does NOT have `auth.users` or RLS — it's a plain DB for development without Supabase Auth.
+**Important**: Standalone PostgreSQL does NOT have `auth.users` or RLS.
 
 ## What's Built vs What's Needed
 
 ### Built
-- ✅ Project setup with Next.js 16, Tailwind v4, shadcn/ui
+- ✅ Project setup (Next.js 16, Tailwind v4, shadcn/ui)
 - ✅ Supabase client files (client, server, proxy-client)
 - ✅ Auth proxy (`proxy.ts`) with session refresh + route protection
 - ✅ Auth callback route (`/api/auth/callback`)
 - ✅ TypeScript types for all entities
 - ✅ Database schema + seed data (52 skills)
 - ✅ Landing page with hero, roles, SDLC stages, CTA
-- ✅ Docker development environment (standalone + Supabase)
+- ✅ Docker dev environment (standalone + Supabase)
+- ✅ Login page (Supabase email/password auth)
+- ✅ Register page (role selection: developer/client)
+- ✅ Dashboard layout with sidebar navigation
+- ✅ Developer search page with filters (skills, experience, availability)
+- ✅ Developer card + Project card components
+- ✅ Project listing page with search
+- ✅ Dashboard page with stats and recent activity
+- ✅ Messages page (conversation list + chat placeholder)
 - ✅ Build passes (`pnpm build`)
 
-### Needed (Phase 2 — next steps)
-- 🔲 Auth pages: login, register (with role selection)
-- 🔲 Dashboard layout with sidebar nav
-- 🔲 Developer profile page + edit form
+### Needed (Phase 3)
+- 🔲 Developer profile page + edit form (bio, skills, rates, portfolio)
 - 🔲 Client profile page + edit form
-- 🔲 Project creation form
-- 🔲 Project listing with filters (skills, budget, SDLC category)
-- 🔲 Developer search/browse with filters
+- 🔲 Project creation form (multi-step with SDLC categories)
 - 🔲 Proposal system (apply to projects)
 - 🔲 Matching algorithm (scoring: skills + experience + availability + rating)
-- 🔲 Messaging (real-time chat)
+- 🔲 Real-time messaging (Supabase Realtime or Socket.io)
 - 🔲 Milestone & payment flow (Stripe Connect escrow)
 - 🔲 Review system (mutual reviews)
 - 🔲 Notifications
+- 🔲 Hook up mock data to real DB queries
 
 ## Design Decisions
 
@@ -128,12 +139,15 @@ Already created in Docker PostgreSQL with 52 seed skills.
 | Payments | Escrow by milestones, auto-escalation 48h | Security for both parties |
 | Reviews | Mutual (both submit before seeing) | Prevents biased reviews |
 | SDLC stages | Discovery, Design, Development, QA, DevOps, Maintenance | Full lifecycle coverage |
+| Auth pages | Dynamic import (`ssr: false`) | Supabase client requires env vars not available at build time |
 
 ## Code Conventions
 
 - Use `@/` path alias for imports (`@/components/ui/button`)
-- shadcn/ui components are in `src/components/ui/`
-- Supabase client creation: use `createClient()` from `@/lib/supabase/client`, `server`, or `proxy-client` depending on context
-- Server components by default; add `"use client"` only when needed
+- shadcn/ui components in `src/components/ui/`, shared components in `src/components/shared/`
+- Supabase client: `createClient()` from `@/lib/supabase/client`, `server`, or `proxy-client`
+- Server components by default; `"use client"` only when needed
+- Auth pages use dynamic import wrapper + separate form component to avoid SSR prerender issues
 - Tailwind v4 with `@theme` in `globals.css` (not `tailwind.config.ts`)
 - No `middleware.ts` — Next.js 16 uses `proxy.ts` with `proxy()` export
+- Pages currently use mock data — DB queries not yet implemented
